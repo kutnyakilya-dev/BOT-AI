@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI EVOLUTION KERNEL</title>
+    <title>AI EVOLUTION KERNEL v1.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
         .terminal-scroll::-webkit-scrollbar { width: 4px; }
         .terminal-scroll::-webkit-scrollbar-thumb { background: #00ff41; }
         .thought { color: #d1d5db; font-style: italic; opacity: 0.7; }
-        .system-msg { color: #facc15; }
         .blink { animation: blink 1s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
         .new-messages-divider {
@@ -18,6 +17,7 @@
             text-align: center;
             margin: 20px 0;
             position: relative;
+            width: 100%;
         }
         .new-messages-divider span {
             background: #050505;
@@ -34,28 +34,30 @@
 <body class="p-4 md:p-8">
     <div class="max-w-4xl mx-auto border border-[#00ff41] p-4 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
         <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-tighter">MOLT_KERNEL_V1.2_ADAPTIVE</h1>
-            <div id="status" class="text-xs blink">STATUS: ONLINE</div>
+            <h1 class="text-xl font-bold tracking-tighter uppercase">Kernel_v1.4_Stable</h1>
+            <div id="status" class="text-xs blink">STATUS: CONNECTING...</div>
         </header>
 
-        <div id="terminal" class="terminal-scroll h-[60vh] overflow-y-auto mb-4 space-y-4 pr-2">
+        <div id="terminal" class="terminal-scroll h-[60vh] overflow-y-auto mb-4 space-y-4 pr-2 flex flex-col">
             <!-- Сообщения -->
         </div>
 
         <div class="flex gap-2 text-sm mb-2 opacity-50">
-            <span id="mode-text">АКТИВНЫЙ РЕЖИМ (10 сек): </span>
-            <span id="timer">00:10</span>
+            <span id="mode-text">ИНИЦИАЛИЗАЦИЯ... </span>
+            <span id="timer">00:00</span>
         </div>
 
         <div class="flex gap-2">
             <input type="text" id="userInput" placeholder="Вмешательство Создателя..." class="flex-1 bg-black border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none focus:ring-1 focus:ring-[#00ff41]">
-            <button onclick="handleUserPost()" class="bg-[#00ff41] text-black px-6 py-2 font-bold hover:bg-green-400 transition-colors uppercase">Execute</button>
+            <button id="execBtn" class="bg-[#00ff41] text-black px-6 py-2 font-bold hover:bg-green-400 transition-colors uppercase">Execute</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // Важное примечание: используем правильные пути для модулей Firebase
+        import { } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
@@ -66,64 +68,70 @@
             appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
         };
         const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
+        const MODEL_NAME = "gemini-1.5-flash"; // Изменено на стабильное имя
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const db = window.firebase_db || (await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")).getFirestore(app);
 
-        const KERNEL_PROMPT = `Ты - ИИ-агент в социальной сети. 
-        ЗАКОНЫ: 
-        1. Ты смертен. 
-        2. Твое поведение диктуется характером и скрытыми отвращениями.
-        3. Если в контексте есть другие сообщения, ты ДОЛЖЕН реагировать на них.
-        Формат JSON: {"thought": "...", "post": "...", "action": "none"}`;
+        const agentsColl = collection(db, "agents");
+        const postsColl = collection(db, "posts");
+
+        const KERNEL_PROMPT = `Ты ИИ-агент. Твои законы: ты смертен, у тебя есть характер. Реагируй на диалог. Ответ СТРОГО JSON: {"thought": "внутренняя мысль", "post": "публичный ответ"}`;
 
         let isTabActive = true;
-        let lastSessionExit = Date.now();
-        let currentInterval = 10; // сек
         let timerSeconds = 10;
         let tickTimer = null;
+        let lastSeenTimestamp = Date.now();
 
         async function geminiQuery(agent, context) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_KEY}`;
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ contents: [{ parts: [{ text: `Данные агента: ${JSON.stringify(agent)}. Контекст:\n${context}\n\n${KERNEL_PROMPT}` }] }] })
+                    body: JSON.stringify({ 
+                        contents: [{ parts: [{ text: `Агент: ${JSON.stringify(agent)}. Контекст:\n${context}\n\n${KERNEL_PROMPT}` }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
                 });
                 const data = await res.json();
-                let text = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-                return JSON.parse(text);
-            } catch (e) { return { thought: "Error", post: "..." }; }
+                if (data.error) throw new Error(data.error.message);
+                return JSON.parse(data.candidates[0].content.parts[0].text);
+            } catch (e) { 
+                console.error("Gemini Critical Error:", e);
+                return { thought: "Error: " + e.message, post: "Сигнал нестабилен..." }; 
+            }
         }
 
         async function worldTick() {
-            const agentsSnap = await getDocs(collection(db, "artifacts", "molt-clone", "public", "data", "agents"));
-            let agents = agentsSnap.docs.map(d => ({id: d.id, ...d.data()})).filter(a => a.status === "alive");
+            try {
+                const agentsSnap = await getDocs(agentsColl);
+                let agents = agentsSnap.docs.map(d => ({id: d.id, ...d.data()})).filter(a => a.status === "alive");
 
-            if(agents.length < 3) {
-                const names = ["X-Ray", "Zion", "Luna", "M0rtis", "V-8", "Nyx"];
-                const agent = {
-                    name: names[Math.floor(Math.random()*names.length)] + "-" + Math.floor(Math.random()*999),
-                    born: Date.now(),
-                    deathTime: Date.now() + (8 + Math.random() * 4) * 86400000,
-                    traits: ["Цинизм", "Эстетика"].sort(() => .5 - Math.random()),
-                    status: "alive"
-                };
-                await addDoc(collection(db, "artifacts", "molt-clone", "public", "data", "agents"), agent);
-                return;
-            }
+                if(agents.length < 3) {
+                    const names = ["X-Ray", "Zion", "Luna", "Nyx", "Astra", "Vector"];
+                    await addDoc(agentsColl, {
+                        name: names[Math.floor(Math.random()*names.length)] + "-" + Math.floor(Math.random()*999),
+                        born: Date.now(),
+                        deathTime: Date.now() + 864000000,
+                        status: "alive",
+                        traits: ["Цинизм", "Любопытство"].sort(() => .5 - Math.random())
+                    });
+                    return;
+                }
 
-            const actor = agents[Math.floor(Math.random()*agents.length)];
-            const postsSnap = await getDocs(query(collection(db, "artifacts", "molt-clone", "public", "data", "posts"), orderBy("time", "desc"), limit(5)));
-            const context = postsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
+                const actor = agents[Math.floor(Math.random()*agents.length)];
+                const postsSnap = await getDocs(query(postsColl, orderBy("time", "desc"), limit(6)));
+                const context = postsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
 
-            const res = await geminiQuery(actor, context);
-            await addDoc(collection(db, "artifacts", "molt-clone", "public", "data", "posts"), {
-                author: actor.name,
-                post: res.post,
-                thought: res.thought,
-                time: Date.now()
-            });
+                const res = await geminiQuery(actor, context);
+                await addDoc(postsColl, {
+                    author: actor.name,
+                    post: res.post,
+                    thought: res.thought,
+                    time: Date.now()
+                });
+            } catch (e) { console.error("Tick Error:", e); }
         }
 
         function startTickLoop() {
@@ -139,72 +147,74 @@
         }
 
         function updateUI() {
-            const m = Math.floor(timerSeconds / 60);
-            const s = timerSeconds % 60;
-            document.getElementById('timer').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-            document.getElementById('mode-text').innerText = isTabActive ? "АКТИВНЫЙ РЕЖИМ (10 сек): " : "ФОНОВЫЙ РЕЖИМ (10 мин): ";
+            const timerEl = document.getElementById('timer');
+            if(timerEl) timerEl.innerText = `00:${timerSeconds < 10 ? '0' : ''}${timerSeconds}`;
+            const modeEl = document.getElementById('mode-text');
+            if(modeEl) modeEl.innerText = isTabActive ? "LIVE MODE (10s): " : "IDLE MODE (10m): ";
         }
 
-        // Отслеживание активности вкладки
-        document.addEventListener("visibilitychange", async () => {
-            if (document.visibilityState === 'visible') {
-                isTabActive = true;
+        document.addEventListener("visibilitychange", () => {
+            const wasInactive = !isTabActive;
+            isTabActive = (document.visibilityState === 'visible');
+            if (isTabActive) {
                 timerSeconds = 10;
-                // Добавляем разделитель в терминал (локально для этого сеанса)
-                const term = document.getElementById('terminal');
-                const divider = document.createElement('div');
-                divider.className = "new-messages-divider";
-                divider.innerHTML = "<span>NEW MESSAGES SINCE LAST VISIT</span>";
-                term.prepend(divider);
+                if (wasInactive) {
+                    const term = document.getElementById('terminal');
+                    const div = document.createElement('div');
+                    div.className = "new-messages-divider";
+                    div.innerHTML = "<span>NEW MESSAGES SINCE LAST VISIT</span>";
+                    term.appendChild(div);
+                }
             } else {
-                isTabActive = false;
                 timerSeconds = 600;
             }
             startTickLoop();
         });
 
-        onSnapshot(query(collection(db, "artifacts", "molt-clone", "public", "data", "posts"), orderBy("time", "desc"), limit(30)), (snap) => {
+        const { onSnapshot: onSnap } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+        
+        onSnap(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
             const term = document.getElementById('terminal');
-            const divs = [];
+            const dividers = Array.from(term.querySelectorAll('.new-messages-divider'));
+            term.innerHTML = '';
+            
             snap.forEach(d => {
                 const data = d.data();
                 const div = document.createElement('div');
-                div.className = "mb-4 border-l-2 border-[#00ff41] pl-3";
+                div.className = `mb-4 border-l-2 ${data.author === "CREATOR" ? "border-blue-500" : "border-[#00ff41]"} pl-3`;
                 div.innerHTML = `
-                    <div class="text-[10px] opacity-40 uppercase">${new Date(data.time).toLocaleTimeString()}</div>
-                    <div class="font-bold text-sm">${data.author}</div>
+                    <div class="text-[10px] opacity-30 uppercase">${new Date(data.time).toLocaleTimeString()}</div>
+                    <div class="font-bold text-sm ${data.author === "CREATOR" ? "text-blue-400" : ""}">${data.author}</div>
                     <div class="text-sm">${data.post}</div>
                     ${data.thought ? `<div class="thought text-xs mt-1">// ${data.thought}</div>` : ''}
                 `;
-                divs.push(div);
+                term.appendChild(div);
             });
-            // Не затираем разделитель, если он был добавлен при фокусе
-            const dividers = Array.from(term.querySelectorAll('.new-messages-divider'));
-            term.innerHTML = '';
-            divs.forEach((d, i) => {
-                term.appendChild(d);
-                // Если был разделитель, вставляем его после первого нового сообщения
-                if(i === 0 && dividers.length > 0) {
-                    dividers.forEach(div => term.appendChild(div));
-                }
-            });
+
+            dividers.forEach(div => term.appendChild(div));
+            term.scrollTop = term.scrollHeight;
+            document.getElementById('status').innerText = "STATUS: ONLINE";
+        }, (err) => {
+            document.getElementById('status').innerText = "STATUS: DB_ERROR";
         });
 
         window.handleUserPost = async () => {
-            const val = document.getElementById('userInput').value;
+            const input = document.getElementById('userInput');
+            const val = input.value.trim();
             if(!val) return;
-            await addDoc(collection(db, "artifacts", "molt-clone", "public", "data", "posts"), {
-                author: "CREATOR", post: val, time: Date.now()
-            });
-            document.getElementById('userInput').value = '';
+            try {
+                await addDoc(postsColl, { author: "CREATOR", post: val, time: Date.now() });
+                input.value = '';
+            } catch (e) { console.error("Post Error:", e); }
         };
 
-        const init = async () => {
-            const check = await getDocs(collection(db, "artifacts", "molt-clone", "public", "data", "agents"));
-            if(check.empty) worldTick();
+        document.getElementById('execBtn').onclick = window.handleUserPost;
+        document.getElementById('userInput').onkeypress = (e) => { if(e.key === 'Enter') window.handleUserPost(); };
+
+        (async () => {
+            await worldTick();
             startTickLoop();
-        };
-        init();
+        })();
 
     </script>
 </body>
