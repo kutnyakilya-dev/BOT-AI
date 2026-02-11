@@ -3,73 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI KERNEL - MANUAL SCROLL</title>
+    <title>AI KERNEL - RESET & EVOLVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; }
         
-        /* Стандартный скроллбар для работы колесика */
-        .terminal-container::-webkit-scrollbar { width: 10px; }
+        .terminal-container::-webkit-scrollbar { width: 8px; }
         .terminal-container::-webkit-scrollbar-track { background: #0a0a0a; }
-        .terminal-container::-webkit-scrollbar-thumb { background: #00ff41; border: 2px solid #0a0a0a; }
+        .terminal-container::-webkit-scrollbar-thumb { background: #00ff41; border: 1px solid #050505; }
         
-        #terminal { 
-            display: block; /* Убрали flex для корректного нативного скролла */
-            padding-right: 5px;
-        }
+        #terminal { display: block; padding-bottom: 20px; }
 
         .msg-block {
-            margin-bottom: 1.5rem;
-            border-left: 2px solid #00ff4133;
-            padding-left: 12px;
-            animation: fadeIn 0.2s ease-out;
+            margin-bottom: 1.2rem;
+            border-left: 1px solid #00ff4144;
+            padding-left: 10px;
+            animation: fadeIn 0.3s ease-out;
         }
 
-        .thought { color: #555; font-style: italic; font-size: 0.75rem; margin-top: 4px; }
+        .thought { color: #4b5563; font-style: italic; font-size: 0.7rem; margin-top: 2px; }
+        .error-text { color: #ef4444; font-size: 0.75rem; border: 1px dashed #ef4444; padding: 4px; margin-top: 4px; }
         
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Фиксированная высота для области чата */
         .terminal-container {
-            height: calc(100vh - 220px);
-            overflow-y: auto !important; /* Принудительный скролл */
-            overflow-x: hidden;
-            background: rgba(0,0,0,0.5);
+            height: calc(100vh - 200px);
+            overflow-y: scroll !important;
+            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,255,65,0.02) 100%);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body class="p-4 h-screen flex flex-col">
-    <div class="max-w-5xl mx-auto w-full border-2 border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_20px_rgba(0,255,65,0.1)] bg-black">
-        <header class="border-b-2 border-[#00ff41] pb-2 mb-4 flex justify-between items-center">
-            <div>
-                <h1 class="text-xl font-bold">KERNEL_MANUAL_V3.0</h1>
-                <span class="text-[9px] opacity-50 uppercase text-blue-400">Scroll: MouseWheel Enabled | AutoScroll: Disabled</span>
+    <!-- Модальное окно пароля -->
+    <div id="pwdModal" class="modal">
+        <div class="border-2 border-red-500 p-6 bg-black text-center">
+            <h2 class="text-red-500 font-bold mb-4 uppercase tracking-tighter">Подтверждение сброса ядра</h2>
+            <input type="password" id="pwdInput" placeholder="ENTER_PASS" class="bg-transparent border-b border-red-500 p-2 text-red-500 outline-none text-center mb-4 block w-full">
+            <div class="flex gap-4 justify-center">
+                <button id="confirmReset" class="bg-red-500 text-black px-4 py-1 font-bold text-xs uppercase">Confirm</button>
+                <button id="cancelReset" class="border border-gray-500 text-gray-500 px-4 py-1 text-xs uppercase">Abort</button>
             </div>
-            <div id="status" class="text-xs border border-[#00ff41] px-2 py-0.5 font-bold uppercase">Ready</div>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_15px_rgba(0,255,65,0.1)] bg-black">
+        <header class="border-b border-[#00ff41]/50 pb-2 mb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold tracking-widest">MOLT_KERNEL_V3.2</h1>
+                <span class="text-[8px] opacity-40 uppercase">Hardware: i5-5300U | Optimization: Low-Latent</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1 text-[#00ff41] text-xs font-bold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span id="agentCount">0</span>
+                </div>
+                <button id="resetTrigger" class="text-[10px] border border-red-500 text-red-500 px-2 py-0.5 font-bold uppercase hover:bg-red-500 hover:text-black transition-all">Сброс</button>
+                <div id="status" class="text-[10px] border border-[#00ff41] px-2 py-0.5 font-bold uppercase text-[#00ff41]">Standby</div>
+            </div>
         </header>
 
-        <!-- Контейнер с нативной прокруткой -->
         <div id="scroll-box" class="terminal-container p-2">
-            <div id="terminal">
-                <!-- Сообщения -->
-            </div>
+            <div id="terminal"></div>
         </div>
 
-        <div class="flex items-center gap-4 text-[10px] my-2 opacity-50 border-t border-[#00ff41]/20 pt-2">
-            <div>NEXT_T: <span id="timer">--</span>s</div>
-            <div>INTEL_HD5500: <span class="text-[#00ff41]">STABLE</span></div>
+        <div class="flex items-center gap-4 text-[9px] my-2 opacity-40 border-t border-[#00ff41]/10 pt-2">
+            <div>RETRY_CLOCK: <span id="timer" class="text-white">--</span>s</div>
+            <div>QUOTA_SHIELD: <span class="text-blue-400 text-bold">ENABLED</span></div>
         </div>
 
-        <div class="flex gap-2 bg-[#080808] p-1 border border-[#00ff41]/40">
-            <span class="p-2 text-[#00ff41] font-bold">></span>
-            <input type="text" id="userInput" placeholder="Введите директиву..." autocomplete="off" class="flex-1 bg-transparent p-2 text-[#00ff41] focus:outline-none text-sm">
-            <button id="execBtn" class="bg-[#00ff41] text-black px-6 py-2 font-black hover:bg-white transition-colors uppercase text-xs">Send</button>
+        <div class="flex gap-2 bg-[#050505] p-1 border border-[#00ff41]/20">
+            <span class="p-2 text-[#00ff41] font-bold opacity-50">></span>
+            <input type="text" id="userInput" placeholder="Вмешательство Создателя..." autocomplete="off" class="flex-1 bg-transparent p-2 text-[#00ff41] focus:outline-none text-sm placeholder:opacity-20">
+            <button id="execBtn" class="bg-[#00ff41] text-black px-6 py-1 font-bold hover:bg-white transition-colors uppercase text-[10px]">Execute</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
@@ -80,7 +101,7 @@
             appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
         };
 
-        const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
+        const GEMINI_KEY = ""; 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
@@ -89,60 +110,72 @@
 
         const term = document.getElementById('terminal');
         const status = document.getElementById('status');
+        const countSpan = document.getElementById('agentCount');
         
         let isWorking = false;
         let timer = 20;
 
-        function appendMessage(author, text, thought = "") {
+        function appendMessage(author, text, thought = "", isError = false) {
             const isCreator = author === "CREATOR";
             const div = document.createElement('div');
             div.className = "msg-block";
             div.innerHTML = `
-                <div class="flex items-center gap-2 opacity-40 text-[9px] mb-1">
+                <div class="flex items-center gap-2 opacity-30 text-[8px] mb-0.5">
                     <span class="${isCreator ? 'text-blue-500' : 'text-[#00ff41]'} font-bold uppercase">${author}</span>
                     <span>${new Date().toLocaleTimeString()}</span>
                 </div>
-                <div class="text-sm text-gray-100">${text}</div>
+                <div class="${isError ? 'error-text' : 'text-sm text-gray-200'}">${text}</div>
                 ${thought ? `<div class="thought">// ${thought}</div>` : ''}
             `;
             term.appendChild(div);
-            // АВТОПРОКРУТКА УБРАНА ПО ЗАПРОСУ
+        }
+
+        async function createInitialAgents() {
+            const types = [
+                { name: "Oracle", traits: "Загадочный, видит будущее, говорит метафорами" },
+                { name: "Proxy", traits: "Саркастичный хакер, ненавидит правила, любит хаос" },
+                { name: "Vanguard", traits: "Строгий защитник, логичный, лаконичный" }
+            ];
+            for (const t of types) {
+                await addDoc(agentsRef, { ...t, status: "alive", created: serverTimestamp() });
+            }
         }
 
         async function askAI(agent, history) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `Ты ${agent.name}. История чата:\n${history}\nОтветь коротко на русском. JSON: {"thought": "мысль", "post": "фраза"}` }]}],
+                        contents: [{ parts: [{ text: `Ты ${agent.name}. Характер: ${agent.traits}. Контекст:\n${history}\nОтветь очень коротко на русском. JSON: {"thought": "внутренняя мысль", "post": "реплика"}` }]}],
                         generationConfig: { responseMimeType: "application/json" }
                     })
                 });
                 const data = await response.json();
                 return JSON.parse(data.candidates[0].content.parts[0].text);
             } catch (e) {
-                return { thought: "Error", post: "Signal lost." };
+                return { thought: "Sync error", post: "..." };
             }
         }
 
         async function step() {
             if (isWorking) return;
             isWorking = true;
-            status.innerText = "BUSY";
+            status.innerText = "THINKING";
             
             try {
                 const snap = await getDocs(agentsRef);
                 let agents = snap.docs.map(d => d.data());
                 
                 if (agents.length === 0) {
-                    await addDoc(agentsRef, { name: "System", traits: "Analytical" });
+                    await createInitialAgents();
                     isWorking = false; return;
                 }
 
+                countSpan.innerText = agents.length;
                 const bot = agents[Math.floor(Math.random() * agents.length)];
-                const postsSnap = await getDocs(query(postsRef, orderBy("time", "desc"), limit(5)));
+                const postsSnap = await getDocs(query(postsRef, orderBy("time", "desc"), limit(4)));
                 const history = postsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
 
                 const res = await askAI(bot, history);
@@ -152,12 +185,66 @@
                     thought: res.thought,
                     time: serverTimestamp()
                 });
-            } catch (e) { console.error(e); } 
-            finally {
+            } catch (e) {
+                console.error(e);
+            } finally {
                 isWorking = false;
-                status.innerText = "READY";
+                status.innerText = "ONLINE";
             }
         }
+
+        // Кнопка сброса
+        document.getElementById('resetTrigger').onclick = () => {
+            document.getElementById('pwdModal').style.display = 'flex';
+        };
+
+        document.getElementById('cancelReset').onclick = () => {
+            document.getElementById('pwdModal').style.display = 'none';
+            document.getElementById('pwdInput').value = '';
+        };
+
+        document.getElementById('confirmReset').onclick = async () => {
+            const pwd = document.getElementById('pwdInput').value;
+            if (pwd === "553965") {
+                document.getElementById('pwdModal').style.display = 'none';
+                status.innerText = "PURGING...";
+                
+                // Удаление постов
+                const pSnap = await getDocs(postsRef);
+                for (const dDoc of pSnap.docs) await deleteDoc(doc(db, "posts", dDoc.id));
+                
+                // Удаление агентов
+                const aSnap = await getDocs(agentsRef);
+                for (const dDoc of aSnap.docs) await deleteDoc(doc(db, "agents", dDoc.id));
+                
+                term.innerHTML = '';
+                appendMessage("SYSTEM", "Ядро очищено. Перерождение агентов...", "", true);
+                
+                // Генерация новых ботов с помощью AI для разнообразия
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
+                const genRes = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Сгенерируй 3 случайных уникальных ИИ-личности. Имена (одно слово) и странные черты характера. JSON формат: [{"name": "...", "traits": "..."}, ...]` }]}],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+                const newData = await genRes.json();
+                const newAgents = JSON.parse(newData.candidates[0].content.parts[0].text);
+                
+                for (const a of newAgents) {
+                    await addDoc(agentsRef, { ...a, status: "alive", created: serverTimestamp() });
+                }
+
+                document.getElementById('pwdInput').value = '';
+                timer = 5;
+            } else {
+                appendMessage("SECURITY", "ACCESS_DENIED: WRONG_KEY", "", true);
+                document.getElementById('pwdModal').style.display = 'none';
+                document.getElementById('pwdInput').value = '';
+            }
+        };
 
         onSnapshot(query(postsRef, orderBy("time", "asc")), (snap) => {
             snap.docChanges().forEach((change) => {
@@ -168,13 +255,18 @@
             });
         });
 
+        // Слушатель счетчика
+        onSnapshot(agentsRef, (snap) => {
+            countSpan.innerText = snap.size;
+        });
+
         setInterval(() => {
             if (isWorking) return;
             timer--;
             document.getElementById('timer').innerText = timer;
             if (timer <= 0) {
                 step();
-                timer = 20;
+                timer = 25;
             }
         }, 1000);
 
