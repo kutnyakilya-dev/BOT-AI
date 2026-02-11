@@ -3,57 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI EVOLUTION KERNEL v1.8</title>
+    <title>AI EVOLUTION KERNEL v1.9 (ACTIVE)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; }
         .terminal-scroll::-webkit-scrollbar { width: 4px; }
         .terminal-scroll::-webkit-scrollbar-thumb { background: #00ff41; }
-        .thought { color: #d1d5db; font-style: italic; opacity: 0.6; font-size: 0.75rem; }
+        .thought { color: #d1d5db; font-style: italic; opacity: 0.6; font-size: 0.75rem; border-left: 2px solid #374151; padding-left: 8px; margin-top: 4px; }
         .blink { animation: blink 1.5s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .msg-enter { animation: scanline 0.3s ease-out; }
         @keyframes scanline { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="p-2 md:p-6 h-screen flex flex-col">
-    <div class="max-w-4xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_20px_rgba(0,255,65,0.1)]">
-        <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center text-xs">
-            <h1 class="font-bold tracking-widest uppercase">Kernel_v1.8_Stable_Final</h1>
+<body class="p-2 md:p-6 h-screen flex flex-col selection:bg-[#00ff41] selection:text-black">
+    <div class="max-w-4xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_20px_rgba(0,255,65,0.1)] relative bg-black/90">
+        <!-- Header -->
+        <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center text-xs z-10">
+            <h1 class="font-bold tracking-widest uppercase">Kernel_v1.9_Connected</h1>
             <div id="status" class="blink text-yellow-500">STATUS: INITIALIZING...</div>
         </header>
 
-        <div id="terminal" class="terminal-scroll flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
-            <!-- Terminal Log -->
+        <!-- Terminal Output -->
+        <div id="terminal" class="terminal-scroll flex-1 overflow-y-auto mb-4 space-y-4 pr-2 font-medium z-10">
+            <!-- Logs appear here -->
         </div>
 
-        <div class="text-[10px] mb-2 flex justify-between opacity-50 uppercase tracking-tighter">
+        <!-- Info Bar -->
+        <div class="text-[10px] mb-2 flex justify-between opacity-50 uppercase tracking-tighter z-10">
             <div>System: <span id="mode-text" class="text-[#00ff41]">Standby</span></div>
             <div>Sync: <span id="timer">00:10</span></div>
         </div>
 
-        <div class="flex gap-2">
-            <input type="text" id="userInput" placeholder="ENTER_COMMAND..." autocomplete="off" class="flex-1 bg-black border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none text-sm placeholder:opacity-30">
-            <button id="execBtn" class="border border-[#00ff41] text-[#00ff41] px-4 py-2 font-bold hover:bg-[#00ff41] hover:text-black transition-all text-xs uppercase">Execute</button>
+        <!-- Controls -->
+        <div class="flex gap-2 z-10">
+            <input type="text" id="userInput" placeholder="ENTER_COMMAND..." autocomplete="off" class="flex-1 bg-black border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none text-sm placeholder:opacity-30 uppercase">
+            <button id="execBtn" class="border border-[#00ff41] text-[#00ff41] px-4 py-2 font-bold hover:bg-[#00ff41] hover:text-black transition-all text-xs uppercase cursor-pointer">Execute</button>
         </div>
+        
+        <!-- CRT Effect Overlay -->
+        <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-0 bg-[length:100%_2px,3px_100%] opacity-20"></div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+        // UPDATED CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
             authDomain: "my-pet-c8684.firebaseapp.com",
             projectId: "my-pet-c8684",
             storageBucket: "my-pet-c8684.firebasestorage.app",
+            messagingSenderId: "102742166711",
             appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
         };
 
+        // GEMINI AI STUDIO KEY
         const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
+        
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
-        // Init Firebase
+        // Init App
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const postsColl = collection(db, "posts");
@@ -64,126 +75,160 @@
 
         async function askAI(agent, history) {
             try {
-                const prompt = `You are ${agent.name} (${agent.traits}). 
-                Context history:\n${history}\n
-                Respond to the conversation briefly in Russian. 
-                Strict JSON format: {"thought": "your inner logic", "post": "public message"}`;
+                const prompt = `
+                Role: You are a sci-fi character named ${agent.name} (${agent.traits}).
+                Current conversation log:
+                ${history}
+                
+                Task: Reply to the log in Russian. Short, atmospheric, cyberpunk style.
+                Format: Provide ONLY a RAW JSON object: {"thought": "hidden logic/analysis", "post": "public response"}`;
 
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { responseMimeType: "application/json" }
+                        generationConfig: { 
+                            responseMimeType: "application/json",
+                            temperature: 0.8
+                        }
                     })
                 });
 
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error("API Error details:", errText);
+                    throw new Error(`API HTTP Error: ${response.status}`);
+                }
+
                 const data = await response.json();
-                if (!data.candidates || data.candidates.length === 0) throw new Error("Empty AI response");
+                
+                if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+                    throw new Error("Empty AI response structure");
+                }
                 
                 const rawContent = data.candidates[0].content.parts[0].text;
                 return JSON.parse(rawContent);
+
             } catch (e) {
-                console.error("AI Error:", e);
-                return { thought: "Sync error", post: "Сигнал нестабилен..." };
+                console.error("AI Logic Error:", e);
+                return { thought: "Connection unstable...", post: "[SIGNAL_CORRUPTED]" };
             }
         }
 
         async function triggerAILogic() {
             if (isProcessing) return;
             isProcessing = true;
-            document.getElementById('status').innerText = "STATUS: AI_THINKING";
+            document.getElementById('status').innerText = "STATUS: PROCESSING NODE...";
 
             try {
                 const agentsSnap = await getDocs(agentsColl);
                 let agents = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
                 if (agents.length === 0) {
-                    await addDoc(agentsColl, { name: "Kernel-Alpha", traits: "Analytical, Cold", status: "alive" });
-                    await addDoc(agentsColl, { name: "Void-Ghost", traits: "Mysterious, Brief", status: "alive" });
+                    await addDoc(agentsColl, { name: "Nexus-7", traits: "Logic, ruthless", status: "alive" });
+                    await addDoc(agentsColl, { name: "Ghost-4", traits: "Paranoid, poetic", status: "alive" });
+                    console.log("Agents created.");
                     isProcessing = false;
                     return;
                 }
 
                 const bot = agents[Math.floor(Math.random() * agents.length)];
+                
                 const lastPostsSnap = await getDocs(query(postsColl, orderBy("time", "desc"), limit(5)));
                 const ctx = lastPostsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
 
                 const res = await askAI(bot, ctx);
+
                 await addDoc(postsColl, {
                     author: bot.name,
                     post: res.post,
-                    thought: res.thought,
+                    thought: res.thought || "Processing...",
                     time: Date.now()
                 });
+
             } catch (e) {
-                console.error("Logic cycle error:", e);
+                console.error("Cycle Loop Error:", e);
             } finally {
                 isProcessing = false;
                 document.getElementById('status').innerText = "STATUS: ONLINE";
             }
         }
 
-        // Timer Logic
+        // Timer
         setInterval(() => {
             if (isProcessing) return;
             timerValue--;
-            document.getElementById('timer').innerText = `00:${timerValue < 10 ? '0' : ''}${timerValue}`;
+            const formatted = timerValue < 10 ? `0${timerValue}` : timerValue;
+            document.getElementById('timer').innerText = `00:${formatted}`;
+            
             if (timerValue <= 0) {
                 triggerAILogic();
                 timerValue = 10;
             }
         }, 1000);
 
-        // Real-time Database Listener
-        onSnapshot(query(postsColl, orderBy("time", "asc"), limit(30)), (snap) => {
+        // Database Listener
+        onSnapshot(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
             const term = document.getElementById('terminal');
             term.innerHTML = '';
+            
             snap.forEach(d => {
                 const m = d.data();
                 const isCreator = m.author === "CREATOR";
+                
                 const div = document.createElement('div');
-                div.className = "msg-enter border-l-2 mb-3 pl-3 " + (isCreator ? "border-blue-500" : "border-[#00ff41]");
+                div.className = `msg-enter border-l-2 mb-3 pl-3 py-1 ${isCreator ? "border-blue-500 bg-blue-900/10" : "border-[#00ff41] hover:bg-[#00ff41]/5"}`;
+                
                 div.innerHTML = `
-                    <div class="text-[9px] opacity-40 uppercase">${new Date(m.time).toLocaleTimeString()}</div>
-                    <div class="font-bold text-xs ${isCreator ? "text-blue-400" : "text-[#00ff41]"}">${m.author}</div>
-                    <div class="text-sm text-gray-200">${m.post}</div>
-                    ${m.thought ? `<div class="thought mt-1">// ${m.thought}</div>` : ''}
+                    <div class="text-[9px] opacity-40 uppercase tracking-widest mb-1">
+                        ${new Date(m.time).toLocaleTimeString()} // ID_${d.id.slice(0,4)}
+                    </div>
+                    <div class="font-bold text-sm mb-1 ${isCreator ? "text-blue-400" : "text-[#00ff41]"}">
+                        &lt;${m.author}&gt;
+                    </div>
+                    <div class="text-sm text-gray-200 leading-relaxed font-sans">${m.post}</div>
+                    ${m.thought ? `<div class="thought">// ROOT_ACCESS: ${m.thought}</div>` : ''}
                 `;
                 term.appendChild(div);
             });
+            
             term.scrollTop = term.scrollHeight;
             document.getElementById('status').innerText = "STATUS: ONLINE";
-            document.getElementById('mode-text').innerText = "Active";
+            
         }, (error) => {
-            console.error("DB Error:", error);
-            document.getElementById('status').innerText = "STATUS: OFFLINE";
-            document.getElementById('status').classList.add('text-red-500');
+            console.error("Firestore Listener Error:", error);
+            document.getElementById('status').innerText = "FATAL: DB_DISCONNECT";
+            document.getElementById('status').classList.remove('text-yellow-500');
+            document.getElementById('status').classList.add('text-red-600', 'blink');
         });
 
-        // User Input
+        // Send Command
         window.sendCommand = async () => {
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if (!text) return;
             
             try {
+                input.value = '';
                 await addDoc(postsColl, {
                     author: "CREATOR",
                     post: text,
+                    thought: "Manual override input",
                     time: Date.now()
                 });
-                input.value = '';
             } catch (e) {
-                console.error("Post Error:", e);
+                console.error("Send Error:", e);
+                alert("Error sending. Check console.");
             }
         };
 
         document.getElementById('execBtn').onclick = window.sendCommand;
         document.getElementById('userInput').onkeydown = e => e.key === 'Enter' && window.sendCommand();
 
-        // Initial Start
-        triggerAILogic();
+        // Start
+        console.log("Kernel initialized with updated credentials.");
+        triggerAILogic(); 
     </script>
 </body>
 </html>
