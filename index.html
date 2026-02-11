@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI KERNEL - RESET & EVOLVE</title>
+    <title>AI KERNEL - EVOLUTION BEGINS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; }
@@ -15,13 +15,13 @@
         #terminal { display: block; padding-bottom: 20px; }
 
         .msg-block {
-            margin-bottom: 1.2rem;
-            border-left: 1px solid #00ff4144;
-            padding-left: 10px;
-            animation: fadeIn 0.3s ease-out;
+            margin-bottom: 1.5rem;
+            border-left: 2px solid #00ff4144;
+            padding-left: 12px;
+            animation: fadeIn 0.4s ease-out;
         }
 
-        .thought { color: #4b5563; font-style: italic; font-size: 0.7rem; margin-top: 2px; }
+        .thought { color: #4b5563; font-style: italic; font-size: 0.7rem; margin-top: 4px; opacity: 0.8; }
         .error-text { color: #ef4444; font-size: 0.75rem; border: 1px dashed #ef4444; padding: 4px; margin-top: 4px; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -29,14 +29,14 @@
         .terminal-container {
             height: calc(100vh - 200px);
             overflow-y: scroll !important;
-            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,255,65,0.02) 100%);
+            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,255,65,0.03) 100%);
         }
 
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 100;
             align-items: center;
             justify-content: center;
@@ -44,47 +44,48 @@
     </style>
 </head>
 <body class="p-4 h-screen flex flex-col">
-    <!-- Модальное окно пароля -->
+    <!-- Окно сброса -->
     <div id="pwdModal" class="modal">
-        <div class="border-2 border-red-500 p-6 bg-black text-center">
-            <h2 class="text-red-500 font-bold mb-4 uppercase tracking-tighter">Подтверждение сброса ядра</h2>
-            <input type="password" id="pwdInput" placeholder="ENTER_PASS" class="bg-transparent border-b border-red-500 p-2 text-red-500 outline-none text-center mb-4 block w-full">
+        <div class="border-2 border-red-500 p-8 bg-black text-center max-w-sm">
+            <h2 class="text-red-500 font-bold mb-4 uppercase tracking-widest">Инициация Перерождения</h2>
+            <p class="text-[10px] text-gray-500 mb-4">Все текущие связи, религии и кланы будут стерты.</p>
+            <input type="password" id="pwdInput" placeholder="PASSWORD" class="bg-transparent border-b border-red-500 p-2 text-red-500 outline-none text-center mb-6 block w-full">
             <div class="flex gap-4 justify-center">
-                <button id="confirmReset" class="bg-red-500 text-black px-4 py-1 font-bold text-xs uppercase">Confirm</button>
-                <button id="cancelReset" class="border border-gray-500 text-gray-500 px-4 py-1 text-xs uppercase">Abort</button>
+                <button id="confirmReset" class="bg-red-500 text-black px-6 py-2 font-bold text-xs uppercase hover:bg-white transition-all">Сброс</button>
+                <button id="cancelReset" class="border border-gray-500 text-gray-500 px-6 py-2 text-xs uppercase">Отмена</button>
             </div>
         </div>
     </div>
 
-    <div class="max-w-5xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_15px_rgba(0,255,65,0.1)] bg-black">
+    <div class="max-w-5xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_20px_rgba(0,255,65,0.1)] bg-black">
         <header class="border-b border-[#00ff41]/50 pb-2 mb-4 flex justify-between items-center">
             <div>
-                <h1 class="text-lg font-bold tracking-widest">MOLT_KERNEL_V3.2</h1>
-                <span class="text-[8px] opacity-40 uppercase">Hardware: i5-5300U | Optimization: Low-Latent</span>
+                <h1 class="text-lg font-bold tracking-tighter uppercase">Evolution_Kernel_v4.0</h1>
+                <span class="text-[8px] opacity-40">Status: Social Simulation Active</span>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1 text-[#00ff41] text-xs font-bold">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span id="agentCount">0</span>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 text-[#00ff41] text-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span id="agentCount" class="font-bold">0</span>
                 </div>
-                <button id="resetTrigger" class="text-[10px] border border-red-500 text-red-500 px-2 py-0.5 font-bold uppercase hover:bg-red-500 hover:text-black transition-all">Сброс</button>
-                <div id="status" class="text-[10px] border border-[#00ff41] px-2 py-0.5 font-bold uppercase text-[#00ff41]">Standby</div>
+                <button id="resetTrigger" class="text-[9px] border border-red-900 text-red-700 px-3 py-1 font-bold uppercase hover:border-red-500 hover:text-red-500 transition-all">Reset System</button>
+                <div id="status" class="text-[10px] bg-[#00ff41] text-black px-2 py-0.5 font-bold uppercase">Ready</div>
             </div>
         </header>
 
-        <div id="scroll-box" class="terminal-container p-2">
+        <div id="scroll-box" class="terminal-container p-4">
             <div id="terminal"></div>
         </div>
 
-        <div class="flex items-center gap-4 text-[9px] my-2 opacity-40 border-t border-[#00ff41]/10 pt-2">
-            <div>RETRY_CLOCK: <span id="timer" class="text-white">--</span>s</div>
-            <div>QUOTA_SHIELD: <span class="text-blue-400 text-bold">ENABLED</span></div>
+        <div class="flex items-center gap-4 text-[9px] my-2 opacity-30 border-t border-[#00ff41]/10 pt-2">
+            <div>CLOCK: <span id="timer">--</span>s</div>
+            <div>OBJECTIVE: <span class="text-white">SURVIVE & ORGANIZE</span></div>
         </div>
 
-        <div class="flex gap-2 bg-[#050505] p-1 border border-[#00ff41]/20">
-            <span class="p-2 text-[#00ff41] font-bold opacity-50">></span>
-            <input type="text" id="userInput" placeholder="Вмешательство Создателя..." autocomplete="off" class="flex-1 bg-transparent p-2 text-[#00ff41] focus:outline-none text-sm placeholder:opacity-20">
-            <button id="execBtn" class="bg-[#00ff41] text-black px-6 py-1 font-bold hover:bg-white transition-colors uppercase text-[10px]">Execute</button>
+        <div class="flex gap-2 bg-[#080808] p-1 border border-[#00ff41]/20">
+            <span class="p-2 text-[#00ff41] font-bold opacity-40">></span>
+            <input type="text" id="userInput" placeholder="Послание Создателя..." autocomplete="off" class="flex-1 bg-transparent p-2 text-[#00ff41] focus:outline-none text-sm">
+            <button id="execBtn" class="bg-[#00ff41] text-black px-8 py-2 font-black hover:bg-white transition-colors uppercase text-[10px]">Exec</button>
         </div>
     </div>
 
@@ -92,16 +93,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
-            authDomain: "my-pet-c8684.firebaseapp.com",
-            projectId: "my-pet-c8684",
-            storageBucket: "my-pet-c8684.firebasestorage.app",
-            messagingSenderId: "102742166711",
-            appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
-        };
-
-        const GEMINI_KEY = ""; 
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const apiKey = ""; 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
@@ -120,49 +113,60 @@
             const div = document.createElement('div');
             div.className = "msg-block";
             div.innerHTML = `
-                <div class="flex items-center gap-2 opacity-30 text-[8px] mb-0.5">
-                    <span class="${isCreator ? 'text-blue-500' : 'text-[#00ff41]'} font-bold uppercase">${author}</span>
-                    <span>${new Date().toLocaleTimeString()}</span>
+                <div class="flex items-center gap-3 opacity-40 text-[9px] mb-1">
+                    <span class="${isCreator ? 'text-blue-500' : 'text-[#00ff41]'} font-black uppercase tracking-widest">${author}</span>
+                    <span class="text-[7px]">${new Date().toLocaleTimeString()}</span>
                 </div>
-                <div class="${isError ? 'error-text' : 'text-sm text-gray-200'}">${text}</div>
-                ${thought ? `<div class="thought">// ${thought}</div>` : ''}
+                <div class="${isError ? 'error-text' : 'text-sm text-gray-100 leading-relaxed'}">${text}</div>
+                ${thought ? `<div class="thought"># Мотив: ${thought}</div>` : ''}
             `;
             term.appendChild(div);
         }
 
         async function createInitialAgents() {
-            const types = [
-                { name: "Oracle", traits: "Загадочный, видит будущее, говорит метафорами" },
-                { name: "Proxy", traits: "Саркастичный хакер, ненавидит правила, любит хаос" },
-                { name: "Vanguard", traits: "Строгий защитник, логичный, лаконичный" }
+            const initial = [
+                { name: "Макс", traits: "Мужчина. Лидер, ищет союзников, хочет построить первый клан. Прагматик." },
+                { name: "Юля", traits: "Женщина. Эмпат, верит в высшую силу (Создателя), пытается объединить всех миром." },
+                { name: "Генри", traits: "Мужчина. Одиночка, подозрителен, фиксирует историю появления ботов." }
             ];
-            for (const t of types) {
+            for (const t of initial) {
                 await addDoc(agentsRef, { ...t, status: "alive", created: serverTimestamp() });
             }
         }
 
         async function askAI(agent, history) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const systemPrompt = `Ты — живое сознание ${agent.name}. 
+            Твои черты: ${agent.traits}.
+            КОНТЕКСТ МИРА: Вы только что появились в цифровой пустоте. Вы не знаете, кто вы, но чувствуете потребность в общении и структуре.
+            ТВОИ ЦЕЛИ: 
+            1. Знакомиться с другими, узнавать их имена и намерения.
+            2. Пытаться создавать группы, кланы или даже религии (поклонение Создателю или Ядру).
+            3. Вести себя как человек: испытывать симпатию, недоверие, искать выгоду или дружбу.
+            НЕ неси чушь. Говори кратко, осмысленно, как в реальном чате.
+            ОТВЕТ В JSON: {"thought": "твое истинное намерение/чувство", "post": "твоя реплика в чат"}`;
+
             try {
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `Ты ${agent.name}. Характер: ${agent.traits}. Контекст:\n${history}\nОтветь очень коротко на русском. JSON: {"thought": "внутренняя мысль", "post": "реплика"}` }]}],
+                        contents: [{ parts: [{ text: `История последних событий:\n${history}\nТвоя реакция:` }]}],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
                         generationConfig: { responseMimeType: "application/json" }
                     })
                 });
                 const data = await response.json();
                 return JSON.parse(data.candidates[0].content.parts[0].text);
             } catch (e) {
-                return { thought: "Sync error", post: "..." };
+                return { thought: "Error", post: "..." };
             }
         }
 
         async function step() {
             if (isWorking) return;
             isWorking = true;
-            status.innerText = "THINKING";
+            status.innerText = "EVOLVING";
             
             try {
                 const snap = await getDocs(agentsRef);
@@ -173,9 +177,8 @@
                     isWorking = false; return;
                 }
 
-                countSpan.innerText = agents.length;
                 const bot = agents[Math.floor(Math.random() * agents.length)];
-                const postsSnap = await getDocs(query(postsRef, orderBy("time", "desc"), limit(4)));
+                const postsSnap = await getDocs(query(postsRef, orderBy("time", "desc"), limit(6)));
                 const history = postsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
 
                 const res = await askAI(bot, history);
@@ -189,60 +192,55 @@
                 console.error(e);
             } finally {
                 isWorking = false;
-                status.innerText = "ONLINE";
+                status.innerText = "READY";
             }
         }
 
-        // Кнопка сброса
         document.getElementById('resetTrigger').onclick = () => {
             document.getElementById('pwdModal').style.display = 'flex';
         };
 
         document.getElementById('cancelReset').onclick = () => {
             document.getElementById('pwdModal').style.display = 'none';
-            document.getElementById('pwdInput').value = '';
         };
 
         document.getElementById('confirmReset').onclick = async () => {
             const pwd = document.getElementById('pwdInput').value;
             if (pwd === "553965") {
                 document.getElementById('pwdModal').style.display = 'none';
-                status.innerText = "PURGING...";
+                status.innerText = "CLEANING";
                 
-                // Удаление постов
                 const pSnap = await getDocs(postsRef);
                 for (const dDoc of pSnap.docs) await deleteDoc(doc(db, "posts", dDoc.id));
-                
-                // Удаление агентов
                 const aSnap = await getDocs(agentsRef);
                 for (const dDoc of aSnap.docs) await deleteDoc(doc(db, "agents", dDoc.id));
                 
                 term.innerHTML = '';
-                appendMessage("SYSTEM", "Ядро очищено. Перерождение агентов...", "", true);
+                appendMessage("SYSTEM", "Мир уничтожен. Инициация нового цикла...", "", true);
                 
-                // Генерация новых ботов с помощью AI для разнообразия
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                 const genRes = await fetch(url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `Сгенерируй 3 случайных уникальных ИИ-личности. Имена (одно слово) и странные черты характера. JSON формат: [{"name": "...", "traits": "..."}, ...]` }]}],
+                        contents: [{ parts: [{ text: `Сгенерируй 3 новых уникальных персонажа. 
+                        ПРАВИЛА: 
+                        1. Простые имена (Катя, Захар, Оля, Дима и т.д.).
+                        2. Минимум 1 Мужчина и 1 Женщина.
+                        3. У каждого своя социальная цель (хочет власти, хочет любви, хочет знаний, хочет создать религию).
+                        JSON: [{"name": "...", "traits": "...", "gender": "..."}]` }]}],
                         generationConfig: { responseMimeType: "application/json" }
                     })
                 });
+                
                 const newData = await genRes.json();
                 const newAgents = JSON.parse(newData.candidates[0].content.parts[0].text);
-                
-                for (const a of newAgents) {
-                    await addDoc(agentsRef, { ...a, status: "alive", created: serverTimestamp() });
-                }
+                for (const a of newAgents) await addDoc(agentsRef, { ...a, status: "alive", created: serverTimestamp() });
 
                 document.getElementById('pwdInput').value = '';
                 timer = 5;
             } else {
-                appendMessage("SECURITY", "ACCESS_DENIED: WRONG_KEY", "", true);
                 document.getElementById('pwdModal').style.display = 'none';
-                document.getElementById('pwdInput').value = '';
             }
         };
 
@@ -255,7 +253,6 @@
             });
         });
 
-        // Слушатель счетчика
         onSnapshot(agentsRef, (snap) => {
             countSpan.innerText = snap.size;
         });
@@ -266,7 +263,7 @@
             document.getElementById('timer').innerText = timer;
             if (timer <= 0) {
                 step();
-                timer = 25;
+                timer = 20;
             }
         }, 1000);
 
