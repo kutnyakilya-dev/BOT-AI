@@ -7,11 +7,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; }
-        .terminal-scroll::-webkit-scrollbar { width: 4px; }
-        .terminal-scroll::-webkit-scrollbar-thumb { background: #00ff41; }
+        /* Настройка скроллбара */
+        .terminal-scroll::-webkit-scrollbar { width: 6px; }
+        .terminal-scroll::-webkit-scrollbar-track { background: #0a0a0a; }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 3px; }
+        
         .thought { color: #9ca3af; font-style: italic; font-size: 0.75rem; border-top: 1px solid #1f2937; margin-top: 4px; padding-top: 2px; }
         .blink { animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
+        
+        /* Плавное появление сообщений */
+        .msg-container { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="p-4 h-screen flex flex-col">
@@ -24,8 +31,9 @@
             <div id="status" class="text-xs blink px-2 py-1 bg-[#00ff41] text-black font-bold">BOOTING...</div>
         </header>
 
+        <!-- Контейнер терминала с прокруткой -->
         <div id="terminal" class="terminal-scroll flex-1 overflow-y-auto mb-4 space-y-4 pr-2 scroll-smooth">
-            <!-- Messages stream -->
+            <!-- Сообщения появляются здесь -->
         </div>
 
         <div class="flex items-center gap-4 text-[10px] mb-2 opacity-70 border-t border-[#00ff41]/30 pt-2">
@@ -67,29 +75,36 @@
 
         let isWorking = false;
         let timer = 10;
+        let autoScroll = true;
 
-        // Помощник вывода
+        // Слежение за ручной прокруткой
+        term.addEventListener('scroll', () => {
+            const threshold = 50;
+            autoScroll = (term.scrollHeight - term.scrollTop - term.clientHeight) < threshold;
+        });
+
         function print(author, text, thought = "") {
             const isCreator = author === "CREATOR";
             const div = document.createElement('div');
-            div.className = "animate-in fade-in slide-in-from-left-2 duration-300";
+            div.className = "msg-container flex flex-col";
             div.innerHTML = `
-                <div class="flex flex-col">
-                    <div class="flex items-center gap-2">
-                        <span class="${isCreator ? 'text-blue-500' : 'text-[#00ff41]'} font-black text-xs">[${author}]</span>
-                        <span class="text-[9px] opacity-30">${new Date().toLocaleTimeString()}</span>
-                    </div>
-                    <div class="text-sm leading-relaxed">${text}</div>
-                    ${thought ? `<div class="thought">Brain: ${thought}</div>` : ''}
+                <div class="flex items-center gap-2">
+                    <span class="${isCreator ? 'text-blue-500' : 'text-[#00ff41]'} font-black text-xs">[${author}]</span>
+                    <span class="text-[9px] opacity-30">${new Date().toLocaleTimeString()}</span>
                 </div>
+                <div class="text-sm leading-relaxed">${text}</div>
+                ${thought ? `<div class="thought">Brain: ${thought}</div>` : ''}
             `;
             term.appendChild(div);
-            term.scrollTop = term.scrollHeight;
+            
+            // Автоматическая прокрутка вниз
+            if (autoScroll) {
+                term.scrollTop = term.scrollHeight;
+            }
         }
 
         async function askAI(agent, history) {
             try {
-                // Исправлено: используем поддерживаемую модель gemini-2.5-flash-preview-09-2025
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
                 
                 const response = await fetch(url, {
@@ -97,28 +112,17 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: `Ты ИИ ${agent.name}. Характер: ${agent.traits}. История:\n${history}\nОтветь кратко на русском. Формат JSON: {"thought": "мысль", "post": "фраза"}` }]}],
-                        generationConfig: { 
-                            responseMimeType: "application/json"
-                        }
+                        generationConfig: { responseMimeType: "application/json" }
                     })
                 });
                 
                 const data = await response.json();
                 
-                if (data.error) {
-                    console.error("API Error:", data.error);
-                    return { thought: "API Error", post: `System Error: ${data.error.message}` };
-                }
+                if (data.error) return { thought: "API Error", post: `System Error: ${data.error.message}` };
+                if (!data.candidates?.[0]?.content?.parts?.[0]?.text) return { thought: "Structure Error", post: "..." };
 
-                if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    console.error("Invalid Structure:", data);
-                    return { thought: "Structure Error", post: "..." };
-                }
-
-                const rawContent = data.candidates[0].content.parts[0].text;
-                return JSON.parse(rawContent);
+                return JSON.parse(data.candidates[0].content.parts[0].text);
             } catch (e) {
-                console.error("askAI Failure:", e);
                 return { thought: "Connection Failure", post: "Сигнал прерван..." };
             }
         }
@@ -155,14 +159,14 @@
                     time: serverTimestamp()
                 });
             } catch (e) {
-                errorLog.innerText = "CRITICAL ERROR";
-                console.error("Step Execution Error:", e);
+                errorLog.innerText = "EXEC_FAILURE";
             } finally {
                 isWorking = false;
                 status.innerText = "ONLINE";
             }
         }
 
+        // Подписка на обновления (новые сообщения добавляются вниз)
         onSnapshot(query(postsRef, orderBy("time", "asc")), (snap) => {
             term.innerHTML = '';
             snap.forEach(doc => {
@@ -172,9 +176,8 @@
             errorLog.innerText = "";
             status.innerText = "ONLINE";
         }, (err) => {
-            errorLog.innerText = "PERMISSION DENIED";
+            errorLog.innerText = "ACCESS_DENIED";
             status.innerText = "OFFLINE";
-            console.error("Snapshot error:", err);
         });
 
         setInterval(() => {
@@ -192,10 +195,11 @@
             const val = input.value.trim();
             if (!val) return;
             try {
+                autoScroll = true; // Принудительно скроллим при отправке своего сообщения
                 await addDoc(postsRef, { author: "CREATOR", post: val, time: serverTimestamp() });
                 input.value = '';
             } catch (e) {
-                console.error("Send message error:", e);
+                console.error(e);
             }
         };
 
