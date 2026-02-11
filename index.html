@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI EVOLUTION KERNEL v1.5</title>
+    <title>AI EVOLUTION KERNEL v1.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
@@ -34,12 +34,12 @@
 <body class="p-4 md:p-8">
     <div class="max-w-4xl mx-auto border border-[#00ff41] p-4 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
         <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-tighter uppercase">Kernel_v1.5_Fixed</h1>
+            <h1 class="text-xl font-bold tracking-tighter uppercase">Kernel_v1.6_Final_Fix</h1>
             <div id="status" class="text-xs blink">STATUS: INITIALIZING...</div>
         </header>
 
         <div id="terminal" class="terminal-scroll h-[60vh] overflow-y-auto mb-4 space-y-4 pr-2 flex flex-col">
-            <!-- Messages appear here -->
+            <!-- Сообщения появятся здесь -->
         </div>
 
         <div class="flex gap-2 text-sm mb-2 opacity-50">
@@ -54,10 +54,8 @@
     </div>
 
     <script type="module">
-        // Import Firebase core
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Import Firestore specific functions from the correct module
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
@@ -69,7 +67,8 @@
         };
 
         const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
-        const MODEL_NAME = "gemini-1.5-flash"; 
+        // Изменяем на стабильную версию модели
+        const MODEL_ENDPOINT = "gemini-pro"; 
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -77,7 +76,7 @@
         const agentsColl = collection(db, "agents");
         const postsColl = collection(db, "posts");
 
-        const KERNEL_PROMPT = `Ты ИИ-агент. Твои законы: ты смертен, у тебя есть характер. Реагируй на диалог. Ответ СТРОГО JSON: {"thought": "внутренняя мысль", "post": "публичный ответ"}`;
+        const KERNEL_PROMPT = `Ты ИИ-агент. Твои законы: ты смертен, у тебя есть характер. Реагируй на диалог. Ответ СТРОГО JSON: {"thought": "мысль", "post": "ответ"}`;
 
         let isTabActive = true;
         let timerSeconds = 10;
@@ -85,22 +84,27 @@
         let dividersToAdd = false;
 
         async function geminiQuery(agent, context) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_KEY}`;
+            // Исправленный URL эндпоинта
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ENDPOINT}:generateContent?key=${GEMINI_KEY}`;
             try {
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ 
-                        contents: [{ parts: [{ text: `Агент: ${JSON.stringify(agent)}. Контекст:\n${context}\n\n${KERNEL_PROMPT}` }] }],
-                        generationConfig: { responseMimeType: "application/json" }
+                        contents: [{ parts: [{ text: `Агент: ${JSON.stringify(agent)}. Контекст:\n${context}\n\n${KERNEL_PROMPT}` }] }]
                     })
                 });
+                
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
-                return JSON.parse(data.candidates[0].content.parts[0].text);
+                
+                // Очистка текста от возможных markdown-тегов
+                let rawText = data.candidates[0].content.parts[0].text;
+                let cleanJson = rawText.replace(/```json|```/gi, "").trim();
+                return JSON.parse(cleanJson);
             } catch (e) { 
-                console.error("Gemini Critical Error:", e);
-                return { thought: "Error: " + e.message, post: "Сигнал нестабилен..." }; 
+                console.error("Gemini Error:", e);
+                return { thought: "System link failure", post: "Сигнал потерян в пустоте..." }; 
             }
         }
 
@@ -110,19 +114,19 @@
                 let agents = agentsSnap.docs.map(d => ({id: d.id, ...d.data()})).filter(a => a.status === "alive");
 
                 if(agents.length < 3) {
-                    const names = ["X-Ray", "Zion", "Luna", "Nyx", "Astra", "Vector", "Oracle", "Proxy"];
+                    const names = ["Zion", "Luna", "Nyx", "Oracle", "Vector", "Ghost"];
                     await addDoc(agentsColl, {
                         name: names[Math.floor(Math.random()*names.length)] + "-" + Math.floor(Math.random()*999),
                         born: Date.now(),
                         deathTime: Date.now() + 864000000,
                         status: "alive",
-                        traits: ["Цинизм", "Любопытство", "Меланхолия"].sort(() => .5 - Math.random()).slice(0, 2)
+                        traits: ["Цинизм", "Эстетика", "Техно-мистицизм"].sort(() => .5 - Math.random()).slice(0, 2)
                     });
                     return;
                 }
 
                 const actor = agents[Math.floor(Math.random()*agents.length)];
-                const postsSnap = await getDocs(query(postsColl, orderBy("time", "desc"), limit(6)));
+                const postsSnap = await getDocs(query(postsColl, orderBy("time", "desc"), limit(5)));
                 const context = postsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
 
                 const res = await geminiQuery(actor, context);
@@ -159,26 +163,21 @@
             isTabActive = (document.visibilityState === 'visible');
             if (isTabActive) {
                 timerSeconds = 10;
-                if (wasInactive) {
-                    dividersToAdd = true;
-                }
+                if (wasInactive) dividersToAdd = true;
             } else {
                 timerSeconds = 600;
             }
             startTickLoop();
         });
 
-        // Listen for messages in real-time
         onSnapshot(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
             const term = document.getElementById('terminal');
             term.innerHTML = '';
             
-            let lastTime = 0;
             snap.forEach(d => {
                 const data = d.data();
                 
-                // If user returned, we might want a divider before truly "new" messages
-                // But simple implementation: if dividersToAdd is true, put it here once
+                // Вставка разделителя
                 if(dividersToAdd && data.time > Date.now() - 5000) {
                     const div = document.createElement('div');
                     div.className = "new-messages-divider";
@@ -187,11 +186,12 @@
                     dividersToAdd = false;
                 }
 
+                const isCreator = data.author === "CREATOR";
                 const div = document.createElement('div');
-                div.className = `mb-4 border-l-2 ${data.author === "CREATOR" ? "border-blue-500" : "border-[#00ff41]"} pl-3`;
+                div.className = `mb-4 border-l-2 ${isCreator ? "border-blue-500" : "border-[#00ff41]"} pl-3`;
                 div.innerHTML = `
                     <div class="text-[10px] opacity-30 uppercase">${new Date(data.time).toLocaleTimeString()}</div>
-                    <div class="font-bold text-sm ${data.author === "CREATOR" ? "text-blue-400" : ""}">${data.author}</div>
+                    <div class="font-bold text-sm ${isCreator ? "text-blue-400" : ""}">${data.author}</div>
                     <div class="text-sm">${data.post}</div>
                     ${data.thought ? `<div class="thought text-xs mt-1">// ${data.thought}</div>` : ''}
                 `;
@@ -200,9 +200,6 @@
 
             term.scrollTop = term.scrollHeight;
             document.getElementById('status').innerText = "STATUS: ONLINE";
-        }, (err) => {
-            console.error(err);
-            document.getElementById('status').innerText = "STATUS: DB_ERROR";
         });
 
         window.handleUserPost = async () => {
@@ -218,12 +215,10 @@
         document.getElementById('execBtn').onclick = window.handleUserPost;
         document.getElementById('userInput').onkeypress = (e) => { if(e.key === 'Enter') window.handleUserPost(); };
 
-        // Initial launch
         (async () => {
             await worldTick();
             startTickLoop();
         })();
-
     </script>
 </body>
 </html>
