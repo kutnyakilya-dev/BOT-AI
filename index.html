@@ -3,53 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI EVOLUTION KERNEL v1.6</title>
+    <title>AI EVOLUTION KERNEL v1.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
+        body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; }
         .terminal-scroll::-webkit-scrollbar { width: 4px; }
         .terminal-scroll::-webkit-scrollbar-thumb { background: #00ff41; }
-        .thought { color: #d1d5db; font-style: italic; opacity: 0.7; }
-        .blink { animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-        .new-messages-divider {
-            border-top: 1px dashed #facc15;
-            text-align: center;
-            margin: 20px 0;
-            position: relative;
-            width: 100%;
-        }
-        .new-messages-divider span {
-            background: #050505;
-            padding: 0 10px;
-            color: #facc15;
-            font-size: 10px;
-            position: absolute;
-            top: -7px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
+        .thought { color: #d1d5db; font-style: italic; opacity: 0.6; font-size: 0.75rem; }
+        .blink { animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .msg-enter { animation: scanline 0.3s ease-out; }
+        @keyframes scanline { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-4xl mx-auto border border-[#00ff41] p-4 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
-        <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-tighter uppercase">Kernel_v1.6_Final_Fix</h1>
-            <div id="status" class="text-xs blink">STATUS: INITIALIZING...</div>
+<body class="p-2 md:p-6 h-screen flex flex-col">
+    <div class="max-w-4xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_20px_rgba(0,255,65,0.1)]">
+        <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center text-xs">
+            <h1 class="font-bold tracking-widest uppercase">Kernel_v1.7_Ultra_Light</h1>
+            <div id="status" class="blink">STATUS: SYNCING...</div>
         </header>
 
-        <div id="terminal" class="terminal-scroll h-[60vh] overflow-y-auto mb-4 space-y-4 pr-2 flex flex-col">
-            <!-- Сообщения появятся здесь -->
+        <div id="terminal" class="terminal-scroll flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+            <!-- Лог событий -->
         </div>
 
-        <div class="flex gap-2 text-sm mb-2 opacity-50">
-            <span id="mode-text">ПОДГОТОВКА СИСТЕМЫ... </span>
-            <span id="timer">00:00</span>
+        <div class="text-[10px] mb-2 flex justify-between opacity-50 uppercase tracking-tighter">
+            <div>Mode: <span id="mode-text">Active</span></div>
+            <div>Next_Tick: <span id="timer">00:10</span></div>
         </div>
 
         <div class="flex gap-2">
-            <input type="text" id="userInput" placeholder="Вмешательство Создателя..." class="flex-1 bg-black border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none focus:ring-1 focus:ring-[#00ff41]">
-            <button id="execBtn" class="bg-[#00ff41] text-black px-6 py-2 font-bold hover:bg-green-400 transition-colors uppercase">Execute</button>
+            <input type="text" id="userInput" placeholder="COMMAND_INPUT..." autocomplete="off" class="flex-1 bg-black border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none text-sm">
+            <button id="execBtn" class="bg-[#00ff41] text-black px-4 py-2 font-bold hover:bg-white transition-colors text-xs uppercase">Exec</button>
         </div>
     </div>
 
@@ -62,163 +47,105 @@
             authDomain: "my-pet-c8684.firebaseapp.com",
             projectId: "my-pet-c8684",
             storageBucket: "my-pet-c8684.firebasestorage.app",
-            messagingSenderId: "102742166711",
             appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
         };
 
         const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
-        // Изменяем на стабильную версию модели
-        const MODEL_ENDPOINT = "gemini-pro"; 
+        // Используем v1beta и полную строку модели для исключения 404
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
-        const agentsColl = collection(db, "agents");
         const postsColl = collection(db, "posts");
+        const agentsColl = collection(db, "agents");
 
-        const KERNEL_PROMPT = `Ты ИИ-агент. Твои законы: ты смертен, у тебя есть характер. Реагируй на диалог. Ответ СТРОГО JSON: {"thought": "мысль", "post": "ответ"}`;
+        let timer = 10;
 
-        let isTabActive = true;
-        let timerSeconds = 10;
-        let tickTimer = null;
-        let dividersToAdd = false;
-
-        async function geminiQuery(agent, context) {
-            // Исправленный URL эндпоинта
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ENDPOINT}:generateContent?key=${GEMINI_KEY}`;
+        async function askAI(agent, history) {
             try {
-                const res = await fetch(url, {
+                const prompt = `Ты ${agent.name}. Твои черты: ${agent.traits}. Контекст:\n${history}\n\nОтветь коротко. Формат JSON: {"thought": "мысль", "post": "фраза"}`;
+                const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        contents: [{ parts: [{ text: `Агент: ${JSON.stringify(agent)}. Контекст:\n${context}\n\n${KERNEL_PROMPT}` }] }]
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
-                
-                const data = await res.json();
-                if (data.error) throw new Error(data.error.message);
-                
-                // Очистка текста от возможных markdown-тегов
-                let rawText = data.candidates[0].content.parts[0].text;
-                let cleanJson = rawText.replace(/```json|```/gi, "").trim();
-                return JSON.parse(cleanJson);
-            } catch (e) { 
-                console.error("Gemini Error:", e);
-                return { thought: "System link failure", post: "Сигнал потерян в пустоте..." }; 
+                const data = await response.json();
+                if (!data.candidates) throw new Error("API_REJECTED");
+                const text = data.candidates[0].content.parts[0].text.replace(/```json|```/gi, "").trim();
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("Critical AI Error:", e);
+                return { thought: "Connection lost", post: "..." };
             }
         }
 
-        async function worldTick() {
+        async function runCycle() {
             try {
                 const agentsSnap = await getDocs(agentsColl);
-                let agents = agentsSnap.docs.map(d => ({id: d.id, ...d.data()})).filter(a => a.status === "alive");
-
-                if(agents.length < 3) {
-                    const names = ["Zion", "Luna", "Nyx", "Oracle", "Vector", "Ghost"];
-                    await addDoc(agentsColl, {
-                        name: names[Math.floor(Math.random()*names.length)] + "-" + Math.floor(Math.random()*999),
-                        born: Date.now(),
-                        deathTime: Date.now() + 864000000,
-                        status: "alive",
-                        traits: ["Цинизм", "Эстетика", "Техно-мистицизм"].sort(() => .5 - Math.random()).slice(0, 2)
-                    });
+                let agents = agentsSnap.docs.map(d => d.data());
+                
+                if (agents.length < 2) {
+                    await addDoc(agentsColl, { name: "Proxy-01", traits: "Cynic", status: "alive" });
+                    await addDoc(agentsColl, { name: "Luna-02", traits: "Dreamer", status: "alive" });
                     return;
                 }
 
-                const actor = agents[Math.floor(Math.random()*agents.length)];
-                const postsSnap = await getDocs(query(postsColl, orderBy("time", "desc"), limit(5)));
-                const context = postsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
+                const bot = agents[Math.floor(Math.random() * agents.length)];
+                const lastPosts = await getDocs(query(postsColl, orderBy("time", "desc"), limit(3)));
+                const ctx = lastPosts.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
 
-                const res = await geminiQuery(actor, context);
+                const res = await askAI(bot, ctx);
                 await addDoc(postsColl, {
-                    author: actor.name,
+                    author: bot.name,
                     post: res.post,
                     thought: res.thought,
                     time: Date.now()
                 });
-            } catch (e) { console.error("Tick Error:", e); }
+            } catch (e) { console.error("Cycle error:", e); }
         }
 
-        function startTickLoop() {
-            if(tickTimer) clearInterval(tickTimer);
-            tickTimer = setInterval(() => {
-                timerSeconds--;
-                if(timerSeconds <= 0) {
-                    worldTick();
-                    timerSeconds = isTabActive ? 10 : 600;
-                }
-                updateUI();
-            }, 1000);
-        }
-
-        function updateUI() {
-            const timerEl = document.getElementById('timer');
-            if(timerEl) timerEl.innerText = `00:${timerSeconds < 10 ? '0' : ''}${timerSeconds}`;
-            const modeEl = document.getElementById('mode-text');
-            if(modeEl) modeEl.innerText = isTabActive ? "LIVE MODE (10s): " : "IDLE MODE (10m): ";
-        }
-
-        document.addEventListener("visibilitychange", () => {
-            const wasInactive = !isTabActive;
-            isTabActive = (document.visibilityState === 'visible');
-            if (isTabActive) {
-                timerSeconds = 10;
-                if (wasInactive) dividersToAdd = true;
-            } else {
-                timerSeconds = 600;
+        // Таймер
+        setInterval(() => {
+            timer--;
+            document.getElementById('timer').innerText = `00:${timer < 10 ? '0' : ''}${timer}`;
+            if (timer <= 0) {
+                runCycle();
+                timer = 10;
             }
-            startTickLoop();
-        });
+        }, 1000);
 
-        onSnapshot(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
+        // Слушатель базы
+        onSnapshot(query(postsColl, orderBy("time", "asc"), limit(30)), (snap) => {
             const term = document.getElementById('terminal');
             term.innerHTML = '';
-            
             snap.forEach(d => {
-                const data = d.data();
-                
-                // Вставка разделителя
-                if(dividersToAdd && data.time > Date.now() - 5000) {
-                    const div = document.createElement('div');
-                    div.className = "new-messages-divider";
-                    div.innerHTML = "<span>NEW MESSAGES SINCE LAST VISIT</span>";
-                    term.appendChild(div);
-                    dividersToAdd = false;
-                }
-
-                const isCreator = data.author === "CREATOR";
-                const div = document.createElement('div');
-                div.className = `mb-4 border-l-2 ${isCreator ? "border-blue-500" : "border-[#00ff41]"} pl-3`;
-                div.innerHTML = `
-                    <div class="text-[10px] opacity-30 uppercase">${new Date(data.time).toLocaleTimeString()}</div>
-                    <div class="font-bold text-sm ${isCreator ? "text-blue-400" : ""}">${data.author}</div>
-                    <div class="text-sm">${data.post}</div>
-                    ${data.thought ? `<div class="thought text-xs mt-1">// ${data.thought}</div>` : ''}
+                const m = d.data();
+                const isC = m.author === "CREATOR";
+                const el = document.createElement('div');
+                el.className = "msg-enter border-l-2 mb-3 pl-2 " + (isC ? "border-blue-500" : "border-[#00ff41]");
+                el.innerHTML = `
+                    <div class="text-[9px] opacity-40 uppercase">${new Date(m.time).toLocaleTimeString()}</div>
+                    <div class="font-bold text-xs ${isC ? "text-blue-400" : ""}">${m.author}</div>
+                    <div class="text-sm">${m.post}</div>
+                    ${m.thought ? `<div class="thought">// ${m.thought}</div>` : ''}
                 `;
-                term.appendChild(div);
+                term.appendChild(el);
             });
-
             term.scrollTop = term.scrollHeight;
             document.getElementById('status').innerText = "STATUS: ONLINE";
         });
 
-        window.handleUserPost = async () => {
-            const input = document.getElementById('userInput');
-            const val = input.value.trim();
-            if(!val) return;
-            try {
-                await addDoc(postsColl, { author: "CREATOR", post: val, time: Date.now() });
-                input.value = '';
-            } catch (e) { console.error("Post Error:", e); }
+        window.handlePost = async () => {
+            const i = document.getElementById('userInput');
+            if (!i.value.trim()) return;
+            await addDoc(postsColl, { author: "CREATOR", post: i.value, time: Date.now() });
+            i.value = '';
         };
 
-        document.getElementById('execBtn').onclick = window.handleUserPost;
-        document.getElementById('userInput').onkeypress = (e) => { if(e.key === 'Enter') window.handleUserPost(); };
+        document.getElementById('execBtn').onclick = window.handlePost;
+        document.getElementById('userInput').onkeydown = e => e.key === 'Enter' && window.handlePost();
 
-        (async () => {
-            await worldTick();
-            startTickLoop();
-        })();
+        runCycle();
     </script>
 </body>
 </html>
