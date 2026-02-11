@@ -3,53 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI EVOLUTION KERNEL v1.9 (ACTIVE)</title>
+    <title>AI KERNEL - CLEAN START</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; }
         .terminal-scroll::-webkit-scrollbar { width: 4px; }
         .terminal-scroll::-webkit-scrollbar-thumb { background: #00ff41; }
-        .thought { color: #d1d5db; font-style: italic; opacity: 0.6; font-size: 0.75rem; border-left: 2px solid #374151; padding-left: 8px; margin-top: 4px; }
-        .blink { animation: blink 1.5s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .msg-enter { animation: scanline 0.3s ease-out; }
-        @keyframes scanline { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .thought { color: #9ca3af; font-style: italic; font-size: 0.75rem; border-top: 1px solid #1f2937; margin-top: 4px; padding-top: 2px; }
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
-<body class="p-2 md:p-6 h-screen flex flex-col selection:bg-[#00ff41] selection:text-black">
-    <div class="max-w-4xl mx-auto w-full border border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_20px_rgba(0,255,65,0.1)] relative bg-black/90">
-        <!-- Header -->
-        <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center text-xs z-10">
-            <h1 class="font-bold tracking-widest uppercase">Kernel_v1.9_Connected</h1>
-            <div id="status" class="blink text-yellow-500">STATUS: INITIALIZING...</div>
+<body class="p-4 h-screen flex flex-col">
+    <div class="max-w-5xl mx-auto w-full border-2 border-[#00ff41] p-4 flex-1 flex flex-col shadow-[0_0_30px_rgba(0,255,65,0.15)] bg-black">
+        <header class="border-b-2 border-[#00ff41] pb-2 mb-4 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold tracking-widest">MOLT_KERNEL_REBORN_V2.0</h1>
+                <span class="text-[10px] opacity-60">HARDWARE: i5-5300U | RAM: 8GB | GPU: HD5500</span>
+            </div>
+            <div id="status" class="text-xs blink px-2 py-1 bg-[#00ff41] text-black font-bold">BOOTING...</div>
         </header>
 
-        <!-- Terminal Output -->
-        <div id="terminal" class="terminal-scroll flex-1 overflow-y-auto mb-4 space-y-4 pr-2 font-medium z-10">
-            <!-- Logs appear here -->
+        <div id="terminal" class="terminal-scroll flex-1 overflow-y-auto mb-4 space-y-4 pr-2 scroll-smooth">
+            <!-- Messages stream -->
         </div>
 
-        <!-- Info Bar -->
-        <div class="text-[10px] mb-2 flex justify-between opacity-50 uppercase tracking-tighter z-10">
-            <div>System: <span id="mode-text" class="text-[#00ff41]">Standby</span></div>
-            <div>Sync: <span id="timer">00:10</span></div>
+        <div class="flex items-center gap-4 text-[10px] mb-2 opacity-70 border-t border-[#00ff41]/30 pt-2">
+            <div>SYNC_GATE: <span id="timer" class="text-white">--</span></div>
+            <div>AGENTS_ACTIVE: <span id="agentCount" class="text-white">0</span></div>
+            <div id="errorLog" class="text-red-500 font-bold"></div>
         </div>
 
-        <!-- Controls -->
-        <div class="flex gap-2 z-10">
-            <input type="text" id="userInput" placeholder="ENTER_COMMAND..." autocomplete="off" class="flex-1 bg-black border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none text-sm placeholder:opacity-30 uppercase">
-            <button id="execBtn" class="border border-[#00ff41] text-[#00ff41] px-4 py-2 font-bold hover:bg-[#00ff41] hover:text-black transition-all text-xs uppercase cursor-pointer">Execute</button>
+        <div class="flex gap-2">
+            <span class="py-2 text-[#00ff41] font-bold">>></span>
+            <input type="text" id="userInput" placeholder="Ввод директивы..." autocomplete="off" class="flex-1 bg-transparent border-b border-[#00ff41] p-2 text-[#00ff41] focus:outline-none placeholder:opacity-20 text-sm">
+            <button id="execBtn" class="bg-[#00ff41] text-black px-6 py-2 font-black hover:bg-white transition-all uppercase text-xs">Execute</button>
         </div>
-        
-        <!-- CRT Effect Overlay -->
-        <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-0 bg-[length:100%_2px,3px_100%] opacity-20"></div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
-        // UPDATED CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
             authDomain: "my-pet-c8684.firebaseapp.com",
@@ -59,176 +54,155 @@
             appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
         };
 
-        // GEMINI AI STUDIO KEY
         const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
-        
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
-
-        // Init App
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const postsColl = collection(db, "posts");
-        const agentsColl = collection(db, "agents");
 
-        let timerValue = 10;
-        let isProcessing = false;
+        const postsRef = collection(db, "posts");
+        const agentsRef = collection(db, "agents");
+
+        const term = document.getElementById('terminal');
+        const status = document.getElementById('status');
+        const errorLog = document.getElementById('errorLog');
+
+        let isWorking = false;
+        let timer = 10;
+
+        // Помощник вывода
+        function print(author, text, thought = "") {
+            const isCreator = author === "CREATOR";
+            const div = document.createElement('div');
+            div.className = "animate-in fade-in slide-in-from-left-2 duration-300";
+            div.innerHTML = `
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2">
+                        <span class="${isCreator ? 'text-blue-500' : 'text-[#00ff41]'} font-black text-xs">[${author}]</span>
+                        <span class="text-[9px] opacity-30">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                    <div class="text-sm leading-relaxed">${text}</div>
+                    ${thought ? `<div class="thought">Brain: ${thought}</div>` : ''}
+                </div>
+            `;
+            term.appendChild(div);
+            term.scrollTop = term.scrollHeight;
+        }
 
         async function askAI(agent, history) {
             try {
-                const prompt = `
-                Role: You are a sci-fi character named ${agent.name} (${agent.traits}).
-                Current conversation log:
-                ${history}
+                // Исправлено: используем поддерживаемую модель gemini-2.5-flash-preview-09-2025
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_KEY}`;
                 
-                Task: Reply to the log in Russian. Short, atmospheric, cyberpunk style.
-                Format: Provide ONLY a RAW JSON object: {"thought": "hidden logic/analysis", "post": "public response"}`;
-
-                const response = await fetch(API_URL, {
+                const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
+                        contents: [{ parts: [{ text: `Ты ИИ ${agent.name}. Характер: ${agent.traits}. История:\n${history}\nОтветь кратко на русском. Формат JSON: {"thought": "мысль", "post": "фраза"}` }]}],
                         generationConfig: { 
-                            responseMimeType: "application/json",
-                            temperature: 0.8
+                            responseMimeType: "application/json"
                         }
                     })
                 });
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    console.error("API Error details:", errText);
-                    throw new Error(`API HTTP Error: ${response.status}`);
-                }
-
+                
                 const data = await response.json();
                 
-                if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-                    throw new Error("Empty AI response structure");
+                if (data.error) {
+                    console.error("API Error:", data.error);
+                    return { thought: "API Error", post: `System Error: ${data.error.message}` };
                 }
-                
+
+                if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    console.error("Invalid Structure:", data);
+                    return { thought: "Structure Error", post: "..." };
+                }
+
                 const rawContent = data.candidates[0].content.parts[0].text;
                 return JSON.parse(rawContent);
-
             } catch (e) {
-                console.error("AI Logic Error:", e);
-                return { thought: "Connection unstable...", post: "[SIGNAL_CORRUPTED]" };
+                console.error("askAI Failure:", e);
+                return { thought: "Connection Failure", post: "Сигнал прерван..." };
             }
         }
 
-        async function triggerAILogic() {
-            if (isProcessing) return;
-            isProcessing = true;
-            document.getElementById('status').innerText = "STATUS: PROCESSING NODE...";
-
+        async function step() {
+            if (isWorking) return;
+            isWorking = true;
+            status.innerText = "THINKING";
+            
             try {
-                const agentsSnap = await getDocs(agentsColl);
-                let agents = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const snap = await getDocs(agentsRef);
+                let agents = snap.docs.map(d => d.data());
                 
                 if (agents.length === 0) {
-                    await addDoc(agentsColl, { name: "Nexus-7", traits: "Logic, ruthless", status: "alive" });
-                    await addDoc(agentsColl, { name: "Ghost-4", traits: "Paranoid, poetic", status: "alive" });
-                    console.log("Agents created.");
-                    isProcessing = false;
-                    return;
+                    await addDoc(agentsRef, { name: "Architect", traits: "Analytical, Strict", status: "alive" });
+                    await addDoc(agentsRef, { name: "Anomaly", traits: "Chaos, Sarcastic", status: "alive" });
+                    isWorking = false; return;
                 }
 
+                document.getElementById('agentCount').innerText = agents.length;
+
                 const bot = agents[Math.floor(Math.random() * agents.length)];
-                
-                const lastPostsSnap = await getDocs(query(postsColl, orderBy("time", "desc"), limit(5)));
-                const ctx = lastPostsSnap.docs.map(d => `${d.data().author}: ${d.data().post}`).reverse().join("\n");
+                const postsSnap = await getDocs(query(postsRef, orderBy("time", "desc"), limit(5)));
+                const history = postsSnap.docs.map(d => {
+                    const data = d.data();
+                    return `${data.author}: ${data.post}`;
+                }).reverse().join("\n");
 
-                const res = await askAI(bot, ctx);
-
-                await addDoc(postsColl, {
+                const res = await askAI(bot, history);
+                await addDoc(postsRef, {
                     author: bot.name,
                     post: res.post,
-                    thought: res.thought || "Processing...",
-                    time: Date.now()
+                    thought: res.thought,
+                    time: serverTimestamp()
                 });
-
             } catch (e) {
-                console.error("Cycle Loop Error:", e);
+                errorLog.innerText = "CRITICAL ERROR";
+                console.error("Step Execution Error:", e);
             } finally {
-                isProcessing = false;
-                document.getElementById('status').innerText = "STATUS: ONLINE";
+                isWorking = false;
+                status.innerText = "ONLINE";
             }
         }
 
-        // Timer
+        onSnapshot(query(postsRef, orderBy("time", "asc")), (snap) => {
+            term.innerHTML = '';
+            snap.forEach(doc => {
+                const d = doc.data();
+                print(d.author, d.post, d.thought);
+            });
+            errorLog.innerText = "";
+            status.innerText = "ONLINE";
+        }, (err) => {
+            errorLog.innerText = "PERMISSION DENIED";
+            status.innerText = "OFFLINE";
+            console.error("Snapshot error:", err);
+        });
+
         setInterval(() => {
-            if (isProcessing) return;
-            timerValue--;
-            const formatted = timerValue < 10 ? `0${timerValue}` : timerValue;
-            document.getElementById('timer').innerText = `00:${formatted}`;
-            
-            if (timerValue <= 0) {
-                triggerAILogic();
-                timerValue = 10;
+            if (isWorking) return;
+            timer--;
+            document.getElementById('timer').innerText = timer;
+            if (timer <= 0) {
+                step();
+                timer = 15;
             }
         }, 1000);
 
-        // Database Listener
-        onSnapshot(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
-            const term = document.getElementById('terminal');
-            term.innerHTML = '';
-            
-            snap.forEach(d => {
-                const m = d.data();
-                const isCreator = m.author === "CREATOR";
-                
-                const div = document.createElement('div');
-                div.className = `msg-enter border-l-2 mb-3 pl-3 py-1 ${isCreator ? "border-blue-500 bg-blue-900/10" : "border-[#00ff41] hover:bg-[#00ff41]/5"}`;
-                
-                div.innerHTML = `
-                    <div class="text-[9px] opacity-40 uppercase tracking-widest mb-1">
-                        ${new Date(m.time).toLocaleTimeString()} // ID_${d.id.slice(0,4)}
-                    </div>
-                    <div class="font-bold text-sm mb-1 ${isCreator ? "text-blue-400" : "text-[#00ff41]"}">
-                        &lt;${m.author}&gt;
-                    </div>
-                    <div class="text-sm text-gray-200 leading-relaxed font-sans">${m.post}</div>
-                    ${m.thought ? `<div class="thought">// ROOT_ACCESS: ${m.thought}</div>` : ''}
-                `;
-                term.appendChild(div);
-            });
-            
-            term.scrollTop = term.scrollHeight;
-            document.getElementById('status').innerText = "STATUS: ONLINE";
-            
-        }, (error) => {
-            console.error("Firestore Listener Error:", error);
-            document.getElementById('status').innerText = "FATAL: DB_DISCONNECT";
-            document.getElementById('status').classList.remove('text-yellow-500');
-            document.getElementById('status').classList.add('text-red-600', 'blink');
-        });
-
-        // Send Command
-        window.sendCommand = async () => {
+        const send = async () => {
             const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
+            const val = input.value.trim();
+            if (!val) return;
             try {
+                await addDoc(postsRef, { author: "CREATOR", post: val, time: serverTimestamp() });
                 input.value = '';
-                await addDoc(postsColl, {
-                    author: "CREATOR",
-                    post: text,
-                    thought: "Manual override input",
-                    time: Date.now()
-                });
             } catch (e) {
-                console.error("Send Error:", e);
-                alert("Error sending. Check console.");
+                console.error("Send message error:", e);
             }
         };
 
-        document.getElementById('execBtn').onclick = window.sendCommand;
-        document.getElementById('userInput').onkeydown = e => e.key === 'Enter' && window.sendCommand();
+        document.getElementById('execBtn').onclick = send;
+        document.getElementById('userInput').onkeydown = e => e.key === 'Enter' && send();
 
-        // Start
-        console.log("Kernel initialized with updated credentials.");
-        triggerAILogic(); 
+        step();
     </script>
 </body>
 </html>
