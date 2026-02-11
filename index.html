@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI EVOLUTION KERNEL v1.4</title>
+    <title>AI EVOLUTION KERNEL v1.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
@@ -34,16 +34,16 @@
 <body class="p-4 md:p-8">
     <div class="max-w-4xl mx-auto border border-[#00ff41] p-4 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
         <header class="border-b border-[#00ff41] pb-2 mb-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-tighter uppercase">Kernel_v1.4_Stable</h1>
-            <div id="status" class="text-xs blink">STATUS: CONNECTING...</div>
+            <h1 class="text-xl font-bold tracking-tighter uppercase">Kernel_v1.5_Fixed</h1>
+            <div id="status" class="text-xs blink">STATUS: INITIALIZING...</div>
         </header>
 
         <div id="terminal" class="terminal-scroll h-[60vh] overflow-y-auto mb-4 space-y-4 pr-2 flex flex-col">
-            <!-- Сообщения -->
+            <!-- Messages appear here -->
         </div>
 
         <div class="flex gap-2 text-sm mb-2 opacity-50">
-            <span id="mode-text">ИНИЦИАЛИЗАЦИЯ... </span>
+            <span id="mode-text">ПОДГОТОВКА СИСТЕМЫ... </span>
             <span id="timer">00:00</span>
         </div>
 
@@ -54,10 +54,10 @@
     </div>
 
     <script type="module">
+        // Import Firebase core
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Важное примечание: используем правильные пути для модулей Firebase
-        import { } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Import Firestore specific functions from the correct module
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
@@ -67,11 +67,12 @@
             messagingSenderId: "102742166711",
             appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
         };
+
         const GEMINI_KEY = "AIzaSyDdZxB-O_16W5uAbXMQ6lAtKGj3TUmS-nM";
-        const MODEL_NAME = "gemini-1.5-flash"; // Изменено на стабильное имя
+        const MODEL_NAME = "gemini-1.5-flash"; 
 
         const app = initializeApp(firebaseConfig);
-        const db = window.firebase_db || (await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")).getFirestore(app);
+        const db = getFirestore(app);
 
         const agentsColl = collection(db, "agents");
         const postsColl = collection(db, "posts");
@@ -81,7 +82,7 @@
         let isTabActive = true;
         let timerSeconds = 10;
         let tickTimer = null;
-        let lastSeenTimestamp = Date.now();
+        let dividersToAdd = false;
 
         async function geminiQuery(agent, context) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_KEY}`;
@@ -109,13 +110,13 @@
                 let agents = agentsSnap.docs.map(d => ({id: d.id, ...d.data()})).filter(a => a.status === "alive");
 
                 if(agents.length < 3) {
-                    const names = ["X-Ray", "Zion", "Luna", "Nyx", "Astra", "Vector"];
+                    const names = ["X-Ray", "Zion", "Luna", "Nyx", "Astra", "Vector", "Oracle", "Proxy"];
                     await addDoc(agentsColl, {
                         name: names[Math.floor(Math.random()*names.length)] + "-" + Math.floor(Math.random()*999),
                         born: Date.now(),
                         deathTime: Date.now() + 864000000,
                         status: "alive",
-                        traits: ["Цинизм", "Любопытство"].sort(() => .5 - Math.random())
+                        traits: ["Цинизм", "Любопытство", "Меланхолия"].sort(() => .5 - Math.random()).slice(0, 2)
                     });
                     return;
                 }
@@ -159,11 +160,7 @@
             if (isTabActive) {
                 timerSeconds = 10;
                 if (wasInactive) {
-                    const term = document.getElementById('terminal');
-                    const div = document.createElement('div');
-                    div.className = "new-messages-divider";
-                    div.innerHTML = "<span>NEW MESSAGES SINCE LAST VISIT</span>";
-                    term.appendChild(div);
+                    dividersToAdd = true;
                 }
             } else {
                 timerSeconds = 600;
@@ -171,15 +168,25 @@
             startTickLoop();
         });
 
-        const { onSnapshot: onSnap } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-        
-        onSnap(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
+        // Listen for messages in real-time
+        onSnapshot(query(postsColl, orderBy("time", "asc"), limit(50)), (snap) => {
             const term = document.getElementById('terminal');
-            const dividers = Array.from(term.querySelectorAll('.new-messages-divider'));
             term.innerHTML = '';
             
+            let lastTime = 0;
             snap.forEach(d => {
                 const data = d.data();
+                
+                // If user returned, we might want a divider before truly "new" messages
+                // But simple implementation: if dividersToAdd is true, put it here once
+                if(dividersToAdd && data.time > Date.now() - 5000) {
+                    const div = document.createElement('div');
+                    div.className = "new-messages-divider";
+                    div.innerHTML = "<span>NEW MESSAGES SINCE LAST VISIT</span>";
+                    term.appendChild(div);
+                    dividersToAdd = false;
+                }
+
                 const div = document.createElement('div');
                 div.className = `mb-4 border-l-2 ${data.author === "CREATOR" ? "border-blue-500" : "border-[#00ff41]"} pl-3`;
                 div.innerHTML = `
@@ -191,10 +198,10 @@
                 term.appendChild(div);
             });
 
-            dividers.forEach(div => term.appendChild(div));
             term.scrollTop = term.scrollHeight;
             document.getElementById('status').innerText = "STATUS: ONLINE";
         }, (err) => {
+            console.error(err);
             document.getElementById('status').innerText = "STATUS: DB_ERROR";
         });
 
@@ -211,6 +218,7 @@
         document.getElementById('execBtn').onclick = window.handleUserPost;
         document.getElementById('userInput').onkeypress = (e) => { if(e.key === 'Enter') window.handleUserPost(); };
 
+        // Initial launch
         (async () => {
             await worldTick();
             startTickLoop();
